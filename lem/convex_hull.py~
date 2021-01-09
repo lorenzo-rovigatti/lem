@@ -1,0 +1,17 @@
+import numpy as np
+
+class ConvexHullAnalysis():
+    def __init__(self, trajectory):
+        pass
+
+    def _eigenvalues_from_ch_results(ch_result):
+        triangle_coms = np.array(list(map(lambda t: (t.v1 + t.v2 + t.v3) / 3., ch_result.triangles)))
+        ch_com = np.average(triangle_coms, axis=0)
+        triangle_coms -= ch_com
+        
+        # https://stackoverflow.com/questions/62153830/how-do-i-efficiently-compute-the-gyration-tensor-in-numpy
+        gyr_tensor = np.einsum('im,in->mn', triangle_coms, triangle_coms) / triangle_coms.shape[0]
+        ev, _ = np.linalg.eig(gyr_tensor)
+        ev = sorted(ev)
+    
+    return ev

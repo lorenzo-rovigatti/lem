@@ -17,8 +17,8 @@ class ConvexHullAnalysis():
         R2 = np.average(self.eigenvalues, axis=0)
         self.strains = self.eigenvalues / R2
 
-        self.J = np.sqrt(np.prod(strains, axis=1))
-        self.I = np.sum(strains, axis=1) * J**(-2./3.)
+        self.J = np.sqrt(np.prod(self.strains, axis=1))
+        self.I = np.sum(self.strains, axis=1) * self.J**(-2./3.)
 
         self.V = 4. * np.pi * np.sqrt(3) * np.prod(np.sqrt(self.eigenvalues), axis=1)
         self.V_avg = np.average(self.V)
@@ -34,7 +34,7 @@ class ConvexHullAnalysis():
         np.savetxt("%sJ_pmf.dat" % prefix, pmf_J)
         np.savetxt("%sI_pmf.dat" % prefix, pmf_I)
 
-    def _eigenvalues_from_ch_results(ch_result):
+    def _eigenvalues_from_ch_results(self, ch_result):
         triangle_coms = np.array(list(map(lambda t: (t.v1 + t.v2 + t.v3) / 3., ch_result.triangles)))
         ch_com = np.average(triangle_coms, axis=0)
         triangle_coms -= ch_com

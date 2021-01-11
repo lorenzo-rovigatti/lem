@@ -8,17 +8,21 @@ import numpy as np
 from scipy.spatial import distance_matrix
 from scipy.optimize import linear_sum_assignment
 
-from lem.icp import icp
+from lem.icp import icp, best_fit_transform
 from lem.utils import make_pmf
 
 
 class LocalAnalysis():
 
-    def __init__(self, trajectory, id_centre=None, id_particles=None, do_linear_assigment=True):
+    def __init__(self, trajectory, id_centre=None, id_particles=None, find_correspondence=True):
         self.trajectory = trajectory
         self.id_centre = id_centre
         self.id_particles = id_particles
-        self.do_linear_assignment = do_linear_assigment
+        self.find_correspondence = find_correspondence
+        if self.find_correspondence:
+            self.align_function = icp
+        else:
+            self.align_function = best_fit_transform
         
         if id_particles is None:
             self.trajectory.reset()
@@ -44,8 +48,11 @@ class LocalAnalysis():
         
         return positions - centre
     
+    def _align(self, to_be_aligned, reference):
+        return self.align_function(to_be_aligned, reference)[0]
+    
     def _assign_permutation(self, positions, base_positions):
-        if self.do_linear_assignment:
+        if self.find_correspondence:
             # compute the distance matrix
             graph_weights = distance_matrix(base_positions, positions)
             # perform the linear assignment
@@ -69,12 +76,12 @@ class LocalAnalysis():
                 base_positions = np.copy(positions)
                 self.reference_positions = np.copy(base_positions)
             else:
-                T, distances, iterations = icp(positions, base_positions)
+                T = self._align(positions, base_positions)
         
                 # make C a homogeneous representation of src
                 C = np.ones((self.N, 4))
                 C[:, 0:3] = np.copy(positions)
-                # transform C according to the change of coordinates obtained with the icp procedure
+                # transform C according to the change of coordinates obtained with the alignment procedure
                 C = np.dot(T, C.T).T
                 # obtain the new coordinates
                 positions_corrected = C[:,:3]
@@ -113,12 +120,12 @@ class LocalAnalysis():
     def _compute_F(self, system):
         positions = self._extract_positions(system)
         
-        T, distances, iterations = icp(positions, self.reference_positions)
+        T = self._align(positions, self.reference_positions)
     
         # make C a homogeneous representation of src
         C = np.ones((self.N, 4))
         C[:, 0:3] = np.copy(positions)
-        # transform C according to the change of coordinates obtained with the icp procedure
+        # transform C according to the change of coordinates obtained with the alignment procedure
         C = np.dot(T, C.T).T
         # obtain the new coordinates
         positions_corrected = C[:,:3]

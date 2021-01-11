@@ -3,9 +3,15 @@ import baggianalysis as ba
 
 from lem.utils import make_pmf
 
+
 class ConvexHullAnalysis():
+
     def __init__(self, trajectory):
+        self._analyse(trajectory)
+        
+    def _analyse(self, trajectory):
         ch = ba.ConvexHull()
+        
         trajectory.reset()
         system = trajectory.next_frame()
         self.eigenvalues = []
@@ -18,7 +24,7 @@ class ConvexHullAnalysis():
         self.strains = self.eigenvalues / R2
 
         self.J = np.sqrt(np.prod(self.strains, axis=1))
-        self.I = np.sum(self.strains, axis=1) * self.J**(-2./3.)
+        self.I = np.sum(self.strains, axis=1) * self.J ** (-2. / 3.)
 
         self.V = 4. * np.pi * np.sqrt(3) * np.prod(np.sqrt(self.eigenvalues), axis=1)
         self.V_avg = np.average(self.V)

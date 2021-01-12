@@ -17,6 +17,7 @@ N_per_arm = top_parser.N_monomers_per_arm(0)
 id_centre = 0
 # these are the tips of the arms
 id_particles = [a * N_per_arm + N_per_arm for a in range(arms)]
-# la = lem.LocalAnalysis(trajectory, id_centre=id_centre, id_particles=id_particles, find_correspondence=True, relative_to_centre=True)
-la = lem.LocalAnalysis(trajectory, id_centre=id_centre, id_particles=id_particles, find_correspondence=True)
-la.print_to_file()
+la = lem.LocalAnalysis(trajectory, id_centre=id_centre, id_particles=id_particles, find_correspondence=True, relative_to_centre=True)
+la.print_to_file(prefix="lem_centre_")
+# la = lem.LocalAnalysis(trajectory, id_centre=id_centre, id_particles=id_particles, find_correspondence=True)
+# la.print_to_file(prefix="lem_centre_")

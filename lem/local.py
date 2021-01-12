@@ -4,6 +4,7 @@ Created on 11 gen 2021
 @author: lorenzo
 '''
 
+import sys
 import numpy as np
 from scipy.spatial import distance_matrix
 from scipy.optimize import linear_sum_assignment
@@ -14,7 +15,7 @@ from lem.utils import make_pmf
 
 class LocalAnalysis():
 
-    def __init__(self, trajectory, id_centre=None, id_particles=None, find_correspondence=True):
+    def __init__(self, trajectory, id_centre=None, id_particles=None, find_correspondence=True, relative_to_centre=False):
         self.trajectory = trajectory
         self.id_centre = id_centre
         self.id_particles = id_particles
@@ -23,6 +24,10 @@ class LocalAnalysis():
             self.align_function = icp
         else:
             self.align_function = best_fit_transform
+        if relative_to_centre == True and id_centre == None:
+            print("Error: relative_to_centre=True requires an id_centre", file=sys.stderr)
+            exit(1)
+        self.relative_to_centre = relative_to_centre
         
         if id_particles is None:
             self.trajectory.reset()
@@ -49,7 +54,20 @@ class LocalAnalysis():
         return positions - centre
     
     def _align(self, to_be_aligned, reference):
-        return self.align_function(to_be_aligned, reference)[0]
+        T = self.align_function(to_be_aligned, reference)[0]
+        
+        if self.relative_to_centre:
+            rot_matrix = T[:3,:3]
+            C = np.copy(to_be_aligned)
+            return np.dot(rot_matrix, C.T).T
+        else:
+            # make C a homogeneous representation of to_be_aligned
+            C = np.ones((self.N, 4))
+            C[:, 0:3] = np.copy(to_be_aligned)
+            # transform C according to the change of coordinates obtained with the alignment procedure
+            C = np.dot(T, C.T).T
+            # return the new coordinates
+            return C[:,:3]
     
     def _assign_permutation(self, positions, base_positions):
         if self.find_correspondence:
@@ -76,16 +94,7 @@ class LocalAnalysis():
                 base_positions = np.copy(positions)
                 self.reference_positions = np.copy(base_positions)
             else:
-                T = self._align(positions, base_positions)
-        
-                # make C a homogeneous representation of src
-                C = np.ones((self.N, 4))
-                C[:, 0:3] = np.copy(positions)
-                # transform C according to the change of coordinates obtained with the alignment procedure
-                C = np.dot(T, C.T).T
-                # obtain the new coordinates
-                positions_corrected = C[:,:3]
-                
+                positions_corrected = self._align(positions, base_positions)
                 self.reference_positions += self._assign_permutation(positions_corrected, base_positions)
             
             system = self.trajectory.next_frame()
@@ -119,27 +128,22 @@ class LocalAnalysis():
         
     def _compute_F(self, system):
         positions = self._extract_positions(system)
-        
-        T = self._align(positions, self.reference_positions)
-    
-        # make C a homogeneous representation of src
-        C = np.ones((self.N, 4))
-        C[:, 0:3] = np.copy(positions)
-        # transform C according to the change of coordinates obtained with the alignment procedure
-        C = np.dot(T, C.T).T
-        # obtain the new coordinates
-        positions_corrected = C[:,:3]
-        
+        positions_corrected = self._align(positions, self.reference_positions)
         positions_final = self._assign_permutation(positions_corrected, self.reference_positions)
         
-        # compute A for each point
-        diff_matrix = positions_final[:, np.newaxis,:] - positions_final
-        A = diff_matrix[:,:,:, np.newaxis] * self.reference_diff_matrix[:,:, np.newaxis,:] * self.weight_matrix
-        # then we sum over all the points (i.e. along the second axis)
-        A = np.sum(A, axis=1)
-    
-        # return F
-        return A @ self.D_inv
+        if self.relative_to_centre:
+            inv_ref_poss = 1. / self.reference_positions
+            F = positions_final[:, np.newaxis,:] * inv_ref_poss[:,:, np.newaxis]
+            return F
+        else:
+            # compute A for each point
+            diff_matrix = positions_final[:, np.newaxis,:] - positions_final
+            A = diff_matrix[:,:,:, np.newaxis] * self.reference_diff_matrix[:,:, np.newaxis,:] * self.weight_matrix
+            # then we sum over all the points (i.e. along the second axis)
+            A = np.sum(A, axis=1)
+        
+            # F = A * D^-1
+            return A @ self.D_inv
     
     def _analyse(self):
         self.J_all = []

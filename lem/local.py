@@ -40,7 +40,6 @@ class LocalAnalysis():
         self._analyse()
         
     def _extract_positions(self, system):
-        centre = np.array([0., 0., 0.])
         if self.id_particles is None and self.id_centre is None:
             positions = system.positions()
         else:
@@ -50,6 +49,10 @@ class LocalAnalysis():
                     centre = p.position
                 elif self.id_particles is None or p.index in self.id_particles:
                     positions.append(p.position)
+            
+        # we compute the average ourselves        
+        if self.id_centre is None:
+            self.centre = np.average(positions, axis=0)
         
         return positions - centre
     
@@ -74,7 +77,7 @@ class LocalAnalysis():
             # compute the distance matrix
             graph_weights = distance_matrix(base_positions, positions)
             # perform the linear assignment
-            row_ind, col_ind = linear_sum_assignment(graph_weights)
+            _, col_ind = linear_sum_assignment(graph_weights)
             # reorder the array according to the result of the linear assignment
             return positions[col_ind,:]
         else:
@@ -126,24 +129,30 @@ class LocalAnalysis():
         # and invert the matrix
         self.D_inv = np.linalg.inv(D)
         
+        ref_pos_squared = self.reference_positions * self.reference_positions
+        self.D_avg = np.broadcast_to(ref_pos_squared[:,np.newaxis,:], (self.N, 3, 3))
+        self.D_avg = np.sum(self.D_avg, axis=0)
+        
     def _compute_F(self, system):
         positions = self._extract_positions(system)
         positions_corrected = self._align(positions, self.reference_positions)
         positions_final = self._assign_permutation(positions_corrected, self.reference_positions)
         
         if self.relative_to_centre:
-            inv_ref_poss = 1. / self.reference_positions
-            F = positions_final[:, np.newaxis,:] * inv_ref_poss[:,:, np.newaxis]
-            return F
+            A = np.sum(positions_final[:,:,np.newaxis] * self.reference_positions[:,np.newaxis,:], axis=0)
+            
+            F_avg = A / self.D_avg
         else:
-            # compute A for each point
-            diff_matrix = positions_final[:, np.newaxis,:] - positions_final
-            A = diff_matrix[:,:,:, np.newaxis] * self.reference_diff_matrix[:,:, np.newaxis,:] * self.weight_matrix
-            # then we sum over all the points (i.e. along the second axis)
-            A = np.sum(A, axis=1)
-        
-            # F = A * D^-1
-            return A @ self.D_inv
+            F_avg = None
+            
+        # compute A for each point
+        diff_matrix = positions_final[:, np.newaxis,:] - positions_final
+        A = diff_matrix[:,:,:, np.newaxis] * self.reference_diff_matrix[:,:, np.newaxis,:] * self.weight_matrix
+        # then we sum over all the points (i.e. along the second axis)
+        A = np.sum(A, axis=1)
+    
+        # F = A * D^-1
+        return A @ self.D_inv, F_avg
     
     def _analyse(self):
         self.J_all = []
@@ -160,7 +169,7 @@ class LocalAnalysis():
                 print("Analysed %s confs" % confs)
         
             # and now we can compute the Cauchy-Green strain tensor
-            F = self._compute_F(system)
+            F, F_avg = self._compute_F(system)
             F_T = np.transpose(F, axes=(0, 2, 1))
             C = np.matmul(F_T, F)
         
@@ -170,12 +179,12 @@ class LocalAnalysis():
             
             self.J_all.append(J)
             self.I_all.append(I)
-                
-            F_avg = np.average(F, axis=0)
-            C_avg = F_avg.T @ F_avg
-            J_from_F_avg = np.sqrt(np.linalg.det(C_avg))
-            self.J_conf.append(J_from_F_avg)
-            self.I_conf.append(np.trace(C_avg) / J_from_F_avg ** (2. / 3.))
+
+            if F_avg is not None:                
+                C_avg = np.dot(F_avg.T, F_avg)
+                J_from_F_avg = np.sqrt(np.linalg.det(C_avg))
+                self.J_conf.append(J_from_F_avg)
+                self.I_conf.append(np.trace(C_avg) / J_from_F_avg ** (2. / 3.))
         
             system = self.trajectory.next_frame()
             
@@ -188,12 +197,13 @@ class LocalAnalysis():
                 print("", file=J_out)
                 print("", file=I_out)
             
-        np.savetxt("%sJ_conf.dat" % prefix, self.J_conf)
-        np.savetxt("%sI_conf.dat" % prefix, self.I_conf)
-
-        pmf_J_conf = make_pmf(self.J_conf)
-        pmf_I_conf = make_pmf(self.I_conf)
-
-        np.savetxt("%sJ_conf_pmf.dat" % prefix, pmf_J_conf)
-        np.savetxt("%sI_conf_pmf.dat" % prefix, pmf_I_conf)
+        if self.relative_to_centre:
+            np.savetxt("%sJ_conf.dat" % prefix, self.J_conf)
+            np.savetxt("%sI_conf.dat" % prefix, self.I_conf)
+    
+            pmf_J_conf = make_pmf(self.J_conf)
+            pmf_I_conf = make_pmf(self.I_conf)
+    
+            np.savetxt("%sJ_conf_pmf.dat" % prefix, pmf_J_conf)
+            np.savetxt("%sI_conf_pmf.dat" % prefix, pmf_I_conf)
     

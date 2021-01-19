@@ -33,6 +33,9 @@ class LocalAnalysis():
             self.trajectory.reset()
             system = self.trajectory.next_frame()
             self.N = system.N()
+            if id_centre is not None:
+                self.N -= 1
+            self.trajectory.reset()
         else:
             self.N = len(id_particles)
             

@@ -1,7 +1,7 @@
 import numpy as np
 import baggianalysis as ba
 
-from lem.utils import make_pmf
+from .utils import make_pmf
 
 
 class ConvexHullAnalysis():

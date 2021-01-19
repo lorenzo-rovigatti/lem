@@ -9,8 +9,8 @@ import numpy as np
 from scipy.spatial import distance_matrix
 from scipy.optimize import linear_sum_assignment
 
-from lem.icp import icp, best_fit_transform
-from lem.utils import make_pmf
+from .icp import icp, best_fit_transform
+from .utils import make_pmf
 
 
 class LocalAnalysis():

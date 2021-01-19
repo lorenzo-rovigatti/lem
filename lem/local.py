@@ -130,8 +130,8 @@ class LocalAnalysis():
         self.D_inv = np.linalg.inv(D)
         
         ref_pos_squared = self.reference_positions * self.reference_positions
-        self.D_avg = np.broadcast_to(ref_pos_squared[:,np.newaxis,:], (self.N, 3, 3))
-        self.D_avg = np.sum(self.D_avg, axis=0)
+        self.D_global = np.broadcast_to(ref_pos_squared[:,np.newaxis,:], (self.N, 3, 3))
+        self.D_global = np.sum(self.D_global, axis=0)
         
     def _compute_F(self, system):
         positions = self._extract_positions(system)
@@ -141,9 +141,9 @@ class LocalAnalysis():
         if self.relative_to_centre:
             A = np.sum(positions_final[:,:,np.newaxis] * self.reference_positions[:,np.newaxis,:], axis=0)
             
-            F_avg = A / self.D_avg
+            F_global = A / self.D_global
         else:
-            F_avg = None
+            F_global = None
             
         # compute A for each point
         diff_matrix = positions_final[:, np.newaxis,:] - positions_final
@@ -152,13 +152,15 @@ class LocalAnalysis():
         A = np.sum(A, axis=1)
     
         # F = A * D^-1
-        return A @ self.D_inv, F_avg
+        return A @ self.D_inv, F_global
     
     def _analyse(self):
-        self.J_all = []
-        self.I_all = []
-        self.J_conf = []
-        self.I_conf = []
+        self.J_local = []
+        self.I_local = []
+        self.J_local_avg = []
+        self.I_local_avg = []
+        self.J_global = []
+        self.I_global = []
         
         self.trajectory.reset()
         system = self.trajectory.next_frame()
@@ -169,7 +171,7 @@ class LocalAnalysis():
                 print("Analysed %s confs" % confs)
         
             # and now we can compute the Cauchy-Green strain tensor
-            F, F_avg = self._compute_F(system)
+            F, F_global = self._compute_F(system)
             F_T = np.transpose(F, axes=(0, 2, 1))
             C = np.matmul(F_T, F)
         
@@ -177,33 +179,48 @@ class LocalAnalysis():
             J = np.sqrt(np.linalg.det(C))
             I = np.trace(C, axis1=1, axis2=2) / J ** (2. / 3.)
             
-            self.J_all.append(J)
-            self.I_all.append(I)
+            self.J_local.append(J)
+            self.I_local.append(I)
+            
+            F_avg = np.average(F, axis=0)
+            C_avg = F_avg.T @ F_avg
+            J_from_F_avg = np.sqrt(np.linalg.det(C_avg))
+            self.J_local_avg.append(J_from_F_avg)
+            self.I_local_avg.append(np.trace(C_avg) / J_from_F_avg ** (2. / 3.))
 
-            if F_avg is not None:                
-                C_avg = np.dot(F_avg.T, F_avg)
-                J_from_F_avg = np.sqrt(np.linalg.det(C_avg))
-                self.J_conf.append(J_from_F_avg)
-                self.I_conf.append(np.trace(C_avg) / J_from_F_avg ** (2. / 3.))
+            if F_global is not None:                
+                C_global = np.dot(F_global.T, F_global)
+                J_from_F_global = np.sqrt(np.linalg.det(C_global))
+                self.J_global.append(J_from_F_global)
+                self.I_global.append(np.trace(C_global) / J_from_F_global ** (2. / 3.))
         
             system = self.trajectory.next_frame()
             
     def print_to_file(self, prefix="lem_"):
-        with open("%sJ_all.dat" % prefix, "w") as J_out, open("%sI_all.dat" % prefix, "w") as I_out:
-            for i in range(len(self.J_all)):
-                np.savetxt(J_out, self.J_all[i])
-                np.savetxt(I_out, self.I_all[i])
+        with open("%sJ_local.dat" % prefix, "w") as J_out, open("%sI_local.dat" % prefix, "w") as I_out:
+            for i in range(len(self.J_local)):
+                np.savetxt(J_out, self.J_local[i])
+                np.savetxt(I_out, self.I_local[i])
                 # add an empty line after each set of results
                 print("", file=J_out)
                 print("", file=I_out)
+                
+        np.savetxt("%sJ_local_avg.dat" % prefix, self.J_local_avg)
+        np.savetxt("%sI_local_avg.dat" % prefix, self.I_local_avg)
+                
+        pmf_J_local_avg = make_pmf(self.J_local_avg)
+        pmf_I_local_avg = make_pmf(self.I_local_avg)
+        
+        np.savetxt("%sJ_local_avg_pmf.dat" % prefix, pmf_J_local_avg)
+        np.savetxt("%sI_local_avg_pmf.dat" % prefix, pmf_I_local_avg)
             
         if self.relative_to_centre:
-            np.savetxt("%sJ_conf.dat" % prefix, self.J_conf)
-            np.savetxt("%sI_conf.dat" % prefix, self.I_conf)
+            np.savetxt("%sJ_global.dat" % prefix, self.J_global)
+            np.savetxt("%sI_global.dat" % prefix, self.I_global)
     
-            pmf_J_conf = make_pmf(self.J_conf)
-            pmf_I_conf = make_pmf(self.I_conf)
+            pmf_J_global = make_pmf(self.J_global)
+            pmf_I_global = make_pmf(self.I_global)
     
-            np.savetxt("%sJ_conf_pmf.dat" % prefix, pmf_J_conf)
-            np.savetxt("%sI_conf_pmf.dat" % prefix, pmf_I_conf)
+            np.savetxt("%sJ_global_pmf.dat" % prefix, pmf_J_global)
+            np.savetxt("%sI_global_pmf.dat" % prefix, pmf_I_global)
     

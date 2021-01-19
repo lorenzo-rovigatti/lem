@@ -4,6 +4,18 @@ This repo contains the `lempy` python package and a few accompanying scripts. `l
 
 The analysis can be carried out either with the convex hull construction or with a different method that is described in the `docs/theory.pdf` file and can be used to extract information about the *local* elastic fluctuations.
 
+## Installation
+
+The package (and its requirements) can be installed with 
+
+```
+git clone http://github.com/lorenzo-rovigatti/lem.git
+cd lem
+pip3 install .
+```
+
+You may need to use `pip` instead of `pip3` (or specify `pip`'s path), depending on your local machine's details.
+
 ## Usage
 
 ### Initialising a trajectory object

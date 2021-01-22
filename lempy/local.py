@@ -4,7 +4,6 @@ Created on 11 gen 2021
 @author: lorenzo
 '''
 
-import sys
 import numpy as np
 from scipy.spatial import distance_matrix
 from scipy.optimize import linear_sum_assignment
@@ -24,9 +23,6 @@ class LocalAnalysis():
             self.align_function = icp
         else:
             self.align_function = best_fit_transform
-        if relative_to_centre == True and id_centre == None:
-            print("Error: relative_to_centre=True requires an id_centre", file=sys.stderr)
-            exit(1)
         self.relative_to_centre = relative_to_centre
         
         if id_particles is None:
@@ -192,7 +188,7 @@ class LocalAnalysis():
             self.I_local_avg.append(np.trace(C_avg) / J_from_F_avg ** (2. / 3.))
 
             if F_global is not None:                
-                C_global = np.dot(F_global.T, F_global)
+                C_global = F_global.T @ F_global
                 J_from_F_global = np.sqrt(np.linalg.det(C_global))
                 self.J_global.append(J_from_F_global)
                 self.I_global.append(np.trace(C_global) / J_from_F_global ** (2. / 3.))

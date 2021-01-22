@@ -51,7 +51,7 @@ class LocalAnalysis():
             
         # we compute the average ourselves        
         if self.id_centre is None:
-            self.centre = np.average(positions, axis=0)
+            centre = np.average(positions, axis=0)
         
         return positions - centre
     

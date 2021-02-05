@@ -128,9 +128,9 @@ class LocalAnalysis():
         # and invert the matrix
         self.D_inv = np.linalg.inv(D)
         
-        ref_pos_squared = self.reference_positions * self.reference_positions
-        self.D_global = np.broadcast_to(ref_pos_squared[:,np.newaxis,:], (self.N, 3, 3))
-        self.D_global = np.sum(self.D_global, axis=0)
+        D_global = self.reference_positions[:,:,np.newaxis] * self.reference_positions[:,np.newaxis,:]
+        D_global = np.sum(D_global, axis=0)
+        self.D_global_inv = np.linalg.inv(D_global)
         
     def _compute_F(self, system):
         positions = self._extract_positions(system)
@@ -140,7 +140,7 @@ class LocalAnalysis():
         if self.relative_to_centre:
             A = np.sum(positions_final[:,:,np.newaxis] * self.reference_positions[:,np.newaxis,:], axis=0)
             
-            F_global = A / self.D_global
+            F_global = A @ self.D_global_inv
         else:
             F_global = None
             

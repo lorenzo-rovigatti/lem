@@ -42,7 +42,9 @@ ch = lempy.ConvexHullAnalysis(trajectory)
 ch.print_to_file()
 ```
 
-The `print_to_file` call will generate five files which will contain the instantaneous shape and volume fluctuations (`ch_I.dat` and `ch_J.dat`), their normalised histogram (`ch_I_pmf.dat` and `ch_J_pmf.dat`) and the istantaneous volume (`ch_V.dat`). 
+The `print_to_file` call will generate five files which will contain the instantaneous shape and volume fluctuations (`ch_I.dat` and `ch_J.dat`), their normalised histogram (`ch_I_pmf.dat` and `ch_J_pmf.dat`) and the istantaneous volume (`ch_V.dat`).
+
+The constructor takes an optional parameter (`also_spherical`) which, if set to `True`, will print four additional files (`ch_I_spherical.dat`, `ch_J_spherical.dat`, `ch_I_spherical_pmf.dat` and `ch_J_spherical_pmf.dat`) containing the results obtained by using a sphere in place of an ellipsoid as the reference configuration. 
 
 ### LEM analysis
 

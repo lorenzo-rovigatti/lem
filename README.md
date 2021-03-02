@@ -62,7 +62,7 @@ With the default options these commands will generate the following files:
 The `LocalAnalysis` object takes the following optional arguments that can also change the quantities that are computed:
 * `id_centre=None`: sets the given particle as the central bead.
 * `id_particles=None`: only uses the particles given to compute the local elastic fluctuations.
-* `find_correspondence=True`: if `False` the analysis will assume that points in different configurations have a different identity and will attempt to assign the right identity to each point by using an [iterative closest point](https://en.wikipedia.org/wiki/Iterative_closest_point) construction.
+* `find_correspondence=True`: if `True` the analysis will assume that points in different configurations have a different identity and will attempt to assign the right identity to each point by using an [iterative closest point](https://en.wikipedia.org/wiki/Iterative_closest_point) construction.
 * `relative_to_centre=False`: if set to `True` the analysis will also compute the *global* elastic fluctuations of each configuration by using either the central bead (if `id_centre` is not `None`) or the configuration's centre of mass as reference. If set to `True` the code will print four additional files:
 	* `lem_I_global.dat` and `lem_J_global.dat` will contain the global shape and volume fluctuations.
 	* `lem_I_global_pmf.dat` and `lem_J_global_pmf.dat` the associated normalised histograms.

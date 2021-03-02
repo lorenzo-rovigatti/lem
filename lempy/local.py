@@ -190,30 +190,31 @@ class LocalAnalysis():
             C_avg = F_avg.T @ F_avg
             J_from_F_avg = np.sqrt(np.linalg.det(C_avg))
             self.J_local_avg.append(J_from_F_avg)
-            self.I_local_avg.append(np.trace(C_avg) / J_from_F_avg ** (2. / 3.))
+            self.I_local_avg.append(np.trace(C_avg) / J_from_F_avg**(2. / 3.))
 
-            if F_global is not None:
+            if self.relative_to_centre:
                 _, sigma, _ = np.linalg.svd(F_global)
                 self.all_sigma.append(sigma)
                 
                 C_global = F_global.T @ F_global
                 J_from_F_global = np.sqrt(np.linalg.det(C_global))
                 self.J_global.append(J_from_F_global)
-                self.I_global.append(np.trace(C_global) / J_from_F_global ** (2. / 3.))
+                self.I_global.append(np.trace(C_global) / J_from_F_global**(2. / 3.))
         
             system = self.trajectory.next_frame()
             
-        # analyse the SVD of the deformation tensors
-        sigma_avg = np.average(self.all_sigma, axis=0)
-        self.J_sigma = []
-        self.I_sigma = []
-        for sigma in self.all_sigma:
-            sigma /= sigma_avg
-            C = sigma * sigma
-            J = np.sqrt(np.prod(C))
-            I = np.sum(C) / J**(2. / 3.)
-            self.J_sigma.append(J)
-            self.I_sigma.append(I)
+        if len(self.all_sigma) > 0:
+            # analyse the SVD of the deformation tensors
+            sigma_avg = np.average(self.all_sigma, axis=0)
+            self.J_sigma = []
+            self.I_sigma = []
+            for sigma in self.all_sigma:
+                sigma /= sigma_avg
+                C = sigma * sigma
+                J = np.sqrt(np.prod(C))
+                I = np.sum(C) / J**(2. / 3.)
+                self.J_sigma.append(J)
+                self.I_sigma.append(I)
             
     def print_to_file(self, prefix="lem_"):
         with open("%sJ_local.dat" % prefix, "w") as J_out, open("%sI_local.dat" % prefix, "w") as I_out:

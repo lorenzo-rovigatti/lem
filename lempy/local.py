@@ -9,7 +9,8 @@ from scipy.spatial import distance_matrix
 from scipy.optimize import linear_sum_assignment
 
 from .icp import icp, best_fit_transform
-from .utils import make_pmf
+from .utils import print_data_and_pmf_to_file
+from scipy.constants.constants import sigma
 
 
 class LocalAnalysis():
@@ -160,10 +161,14 @@ class LocalAnalysis():
         self.I_local_avg = []
         self.J_global = []
         self.I_global = []
+        self.all_sigma = []
+        self.I_sigma = []
+        self.J_sigma = []
         
         self.trajectory.reset()
         system = self.trajectory.next_frame()
         confs = 0
+        
         while system != None:
             confs += 1
             if confs % 100 == 0:
@@ -173,7 +178,7 @@ class LocalAnalysis():
             F, F_global = self._compute_F(system)
             F_T = np.transpose(F, axes=(0, 2, 1))
             C = np.matmul(F_T, F)
-        
+            
             # from the invariants of C we obtain J and I
             J = np.sqrt(np.linalg.det(C))
             I = np.trace(C, axis1=1, axis2=2) / J ** (2. / 3.)
@@ -187,13 +192,28 @@ class LocalAnalysis():
             self.J_local_avg.append(J_from_F_avg)
             self.I_local_avg.append(np.trace(C_avg) / J_from_F_avg ** (2. / 3.))
 
-            if F_global is not None:                
+            if F_global is not None:
+                _, sigma, _ = np.linalg.svd(F_global)
+                self.all_sigma.append(sigma)
+                
                 C_global = F_global.T @ F_global
                 J_from_F_global = np.sqrt(np.linalg.det(C_global))
                 self.J_global.append(J_from_F_global)
                 self.I_global.append(np.trace(C_global) / J_from_F_global ** (2. / 3.))
         
             system = self.trajectory.next_frame()
+            
+        # analyse the SVD of the deformation tensors
+        sigma_avg = np.average(self.all_sigma, axis=0)
+        self.J_sigma = []
+        self.I_sigma = []
+        for sigma in self.all_sigma:
+            sigma /= sigma_avg
+            C = sigma * sigma
+            J = np.sqrt(np.prod(C))
+            I = np.sum(C) / J**(2. / 3.)
+            self.J_sigma.append(J)
+            self.I_sigma.append(I)
             
     def print_to_file(self, prefix="lem_"):
         with open("%sJ_local.dat" % prefix, "w") as J_out, open("%sI_local.dat" % prefix, "w") as I_out:
@@ -204,22 +224,13 @@ class LocalAnalysis():
                 print("", file=J_out)
                 print("", file=I_out)
                 
-        np.savetxt("%sJ_local_avg.dat" % prefix, self.J_local_avg)
-        np.savetxt("%sI_local_avg.dat" % prefix, self.I_local_avg)
-                
-        pmf_J_local_avg = make_pmf(self.J_local_avg)
-        pmf_I_local_avg = make_pmf(self.I_local_avg)
-        
-        np.savetxt("%sJ_local_avg_pmf.dat" % prefix, pmf_J_local_avg)
-        np.savetxt("%sI_local_avg_pmf.dat" % prefix, pmf_I_local_avg)
+        print_data_and_pmf_to_file(self.J_local_avg, "%sJ_local_avg" % prefix)
+        print_data_and_pmf_to_file(self.I_local_avg, "%sI_local_avg" % prefix)
             
         if self.relative_to_centre:
-            np.savetxt("%sJ_global.dat" % prefix, self.J_global)
-            np.savetxt("%sI_global.dat" % prefix, self.I_global)
-    
-            pmf_J_global = make_pmf(self.J_global)
-            pmf_I_global = make_pmf(self.I_global)
-    
-            np.savetxt("%sJ_global_pmf.dat" % prefix, pmf_J_global)
-            np.savetxt("%sI_global_pmf.dat" % prefix, pmf_I_global)
+            print_data_and_pmf_to_file(self.J_global, "%sJ_global" % prefix)
+            print_data_and_pmf_to_file(self.I_global, "%sI_global" % prefix)
+            
+            print_data_and_pmf_to_file(self.J_sigma, "%sJ_sigma" % prefix)
+            print_data_and_pmf_to_file(self.I_sigma, "%sI_sigma" % prefix)
     

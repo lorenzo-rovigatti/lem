@@ -15,6 +15,12 @@ def make_pmf(x, remove_last=None):
 
     return pmf
 
+def print_data_and_pmf_to_file(data, prefix):
+    np.savetxt("%s.dat" % prefix, data)
+    pmf = make_pmf(data)
+    np.savetxt("%s_pmf.dat" % prefix, pmf)
+    
+
 def compute_elastic_moduli(J_par, I_par, V_avg):
     K = 2. * J_par / V_avg
     G = 2. * I_par / V_avg

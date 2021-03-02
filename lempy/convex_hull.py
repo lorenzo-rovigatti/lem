@@ -1,7 +1,7 @@
 import numpy as np
 import baggianalysis as ba
 
-from .utils import make_pmf
+from .utils import print_data_and_pmf_to_file
 
 
 class ConvexHullAnalysis():
@@ -38,25 +38,14 @@ class ConvexHullAnalysis():
             self.I_spherical = np.sum(strains, axis=1) * self.J ** (-2. / 3.)
 
     def print_to_file(self, prefix="ch_"):
-        np.savetxt("%sJ.dat" % prefix, self.J)
-        np.savetxt("%sI.dat" % prefix, self.I)
         np.savetxt("%sV.dat" % prefix, self.V)
-
-        pmf_J = make_pmf(self.J)
-        pmf_I = make_pmf(self.I)
-
-        np.savetxt("%sJ_pmf.dat" % prefix, pmf_J)
-        np.savetxt("%sI_pmf.dat" % prefix, pmf_I)
+        
+        print_data_and_pmf_to_file(self.J, "%sJ" % prefix)
+        print_data_and_pmf_to_file(self.I, "%sI" % prefix)
         
         if self.also_spherical:
-            np.savetxt("%sJ_spherical.dat" % prefix, self.J_spherical)
-            np.savetxt("%sI_spherical.dat" % prefix, self.I_spherical)
-            
-            pmf_J = make_pmf(self.J_spherical)
-            pmf_I = make_pmf(self.I_spherical)
-    
-            np.savetxt("%sJ_spherical_pmf.dat" % prefix, pmf_J)
-            np.savetxt("%sI_spherical_pmf.dat" % prefix, pmf_I)
+            print_data_and_pmf_to_file(self.J_spherical, "%sJ_spherical" % prefix)
+            print_data_and_pmf_to_file(self.I_spherical, "%sI_spherical" % prefix)
 
     def _eigenvalues_from_ch_results(self, ch_result):
         triangle_coms = np.array(list(map(lambda t: (t.v1 + t.v2 + t.v3) / 3., ch_result.triangles)))
